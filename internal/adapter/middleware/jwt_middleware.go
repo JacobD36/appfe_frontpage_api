@@ -33,7 +33,7 @@ func (m *JWTMiddleware) Authenticate() echo.MiddlewareFunc {
 			}
 
 			tokenParts := strings.Split(authHeader, " ")
-			if len(tokenParts) != 2 || tokenParts[0] != "Beader" {
+			if len(tokenParts) != 2 || tokenParts[0] != "Bearer" {
 				return c.JSON(http.StatusUnauthorized, map[string]any{
 					"code":    http.StatusUnauthorized,
 					"message": dto.ErrInvalidTokenFormat,
