@@ -4,17 +4,23 @@ import (
 	"context"
 
 	"github.com/JacobD36/appfe_frontpage_api/internal/domain/interfaces"
+	usecaseInterfaces "github.com/JacobD36/appfe_frontpage_api/internal/usecase/interfaces"
 )
 
 type MigrationService struct {
-	uowFactory interfaces.UnitOfWorkFactory
+	uowFactory  interfaces.UnitOfWorkFactory
+	userService usecaseInterfaces.UserService
 }
 
-func NewMigrationService(uowFactory interfaces.UnitOfWorkFactory) *MigrationService {
-	return &MigrationService{uowFactory: uowFactory}
+func NewMigrationService(uowFactory interfaces.UnitOfWorkFactory, userService usecaseInterfaces.UserService) *MigrationService {
+	return &MigrationService{
+		uowFactory:  uowFactory,
+		userService: userService,
+	}
 }
 
 func (s *MigrationService) Migrate(ctx context.Context) error {
+	// Ejecutar migraciones de esquema de base de datos
 	uow, err := s.uowFactory.New(ctx)
 	if err != nil {
 		return err
@@ -25,5 +31,14 @@ func (s *MigrationService) Migrate(ctx context.Context) error {
 		return err
 	}
 
-	return uow.Commit()
+	if err := uow.Commit(); err != nil {
+		return err
+	}
+
+	// Crear administrador inicial después de las migraciones
+	if err := s.userService.CreateInitialAdmin(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }

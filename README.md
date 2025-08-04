@@ -2,7 +2,45 @@
 
 ## 📋 Descripción
 
-Esta API REST está diseñada para administrar el Front Page de la organización **APPFE Lima**. Permite gestionar usuarios a través de un portal administrativo para la página web de APPFE Lima, donde los usuarios pueden modificar el contenido del Front Page según su rol asignado.
+Esta API REST está diseñada para administrar el Front Page de la organización **APPFE Lima**. Permite gestionar usuarios a través de un portal administrativo para la página web de APPFE Lima,2. **Configurar variables de3. **Generar certificados RSA**
+   ```bash
+   mkdir -p cmd/api/certificates
+   openssl genrsa -out cmd/api/certificates/app.rsa 2048
+   openssl rsa -in cmd/api/certificates/app.rsa -pubout -out cmd/api/certificates/app.rsa.pub
+   ```
+
+4. **Ejecutar con Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Compilar y ejecutar la aplicación**
+   ```bash
+   go mod download
+   go run cmd/api/main.go
+   ```bash
+   cp env.template .env
+   # Editar .env con los valores apropiados
+   # ⚠️ IMPORTANTE: Configurar ADMIN_PASSWORD con la contraseña del administrador en texto plano
+   ```
+
+3. **Generar certificados RSA**erar certificados RSA**
+   ```bash
+   mkdir -p cmd/api/certificates
+   openssl genrsa -out cmd/api/certificates/app.rsa 2048
+   openssl rsa -in cmd/api/certificates/app.rsa -pubout -out cmd/api/certificates/app.rsa.pub
+   ```
+
+5. **Ejecutar con Docker Compose**
+   ```bash
+   docker-compose up -d
+   ```
+
+6. **Compilar y ejecutar la aplicación**
+   ```bash
+   go mod download
+   go run cmd/api/main.go
+   ```en modificar el contenido del Front Page según su rol asignado.
 
 La API proporciona funcionalidades completas de gestión de usuarios, autenticación JWT, y control de acceso basado en roles para garantizar la seguridad y la correcta administración del contenido.
 
@@ -180,7 +218,26 @@ POSTGRES_USERNAME=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=appfedb
 POSTGRES_DATABASE_URL=postgres://postgres:postgres@localhost:5432/appfedb?sslmode=disable
+ADMIN_PASSWORD=your_admin_password_here
 ```
+
+### Configuración del Administrador Inicial
+
+La aplicación crea automáticamente un usuario administrador durante el primer inicio con las siguientes credenciales:
+
+- **Nombre**: ADMINISTRADOR
+- **Email**: administracion@appfe.com
+- **Rol**: ADMIN_ROLE
+- **Contraseña**: Se obtiene de la variable de entorno `ADMIN_PASSWORD`
+
+**⚠️ Importante**: La variable `ADMIN_PASSWORD` debe contener la contraseña en texto plano. La aplicación se encargará automáticamente de hashearla con BCrypt (cost factor 12) antes de almacenarla en la base de datos.
+
+**Ejemplo de configuración**:
+```bash
+ADMIN_PASSWORD=mi_contraseña_super_segura_123
+```
+
+Si el usuario administrador ya existe en la base de datos, no se creará nuevamente.
 
 ### Certificados RSA
 
@@ -208,9 +265,24 @@ openssl rsa -in cmd/api/certificates/app.rsa -pubout -out cmd/api/certificates/a
    ```bash
    cp env.template .env
    # Editar .env con los valores apropiados
+   # ⚠️ IMPORTANTE: Configurar ADMIN_HASHED_PASSWORD con la contraseña hasheada del administrador
    ```
 
-3. **Generar certificados RSA**
+3. **Generar hash de contraseña para el administrador**
+   ```bash
+   # Usando Node.js (ejemplo)
+   node -e "console.log(require('bcrypt').hashSync('mi_contraseña_admin', 12))"
+   # Copiar el resultado y pegarlo en ADMIN_HASHED_PASSWORD en el archivo .env
+   ```
+
+3. **Generar hash de contraseña para el administrador**
+   ```bash
+   # Usando Node.js (ejemplo)
+   node -e "console.log(require('bcrypt').hashSync('mi_contraseña_admin', 12))"
+   # Copiar el resultado y pegarlo en ADMIN_HASHED_PASSWORD en el archivo .env
+   ```
+
+4. **Generar certificados RSA**
    ```bash
    mkdir -p cmd/api/certificates
    openssl genrsa -out cmd/api/certificates/app.rsa 2048

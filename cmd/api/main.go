@@ -48,13 +48,13 @@ func main() {
 		log.Fatal(dto.ErrUnitOfWorkFactory, ": ", err)
 	}
 
-	migrationService := usecase.NewMigrationService(uowFactory)
+	hasher := security.NewBcryptHasher(12)
+	userService := usecase.NewUserService(uowFactory, hasher)
+
+	migrationService := usecase.NewMigrationService(uowFactory, userService)
 	if err := migrationService.Migrate(context.Background()); err != nil {
 		log.Fatalf(dto.ErrMigrationFailed, err)
 	}
-
-	hasher := security.NewBcryptHasher(12)
-	userService := usecase.NewUserService(uowFactory, hasher)
 
 	jwtService, err := security.NewJWTService()
 	if err != nil {
