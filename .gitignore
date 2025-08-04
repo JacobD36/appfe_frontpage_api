@@ -1,0 +1,64 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Output of go build
+/build/
+/bin/
+/dist/
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories (when vendored)
+vendor/
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Logs and temp files
+*.log
+*.tmp
+*.cache
+*.bak
+
+# Docker artifacts
+docker-compose.override.yml
+.env
+.env.*
+
+# Test result files
+coverage.out
+
+# Node/npm (if you include a frontend or CDN)
+node_modules/
+
+# Generated files
+*.gen.go
+
+# Editor backup files
+*~
+
+# GitHub-specific
+.github/workflows/*.secret
+
+# GoSum lock file for uncommitted changes
+go.sum
+cmd/api/certificates/app.rsa
+/mongo
+/postgres
+/rediss
