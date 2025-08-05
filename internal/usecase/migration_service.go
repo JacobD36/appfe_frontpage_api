@@ -20,7 +20,6 @@ func NewMigrationService(uowFactory interfaces.UnitOfWorkFactory, userService us
 }
 
 func (s *MigrationService) Migrate(ctx context.Context) error {
-	// Ejecutar migraciones de esquema de base de datos
 	uow, err := s.uowFactory.New(ctx)
 	if err != nil {
 		return err
@@ -35,7 +34,6 @@ func (s *MigrationService) Migrate(ctx context.Context) error {
 		return err
 	}
 
-	// Crear administrador inicial después de las migraciones
 	if err := s.userService.CreateInitialAdmin(ctx); err != nil {
 		return err
 	}
