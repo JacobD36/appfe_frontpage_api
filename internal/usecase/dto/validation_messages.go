@@ -9,8 +9,9 @@ import (
 // Constantes para mensajes de validación y errores del sistema
 const (
 	// Mensajes de validación de contraseña
-	ErrPasswordMinLength  = "la contraseña debe tener al menos 8 caracteres"
-	ErrPasswordComplexity = "la contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial"
+	ErrPasswordMinLength   = "la contraseña debe tener al menos 8 caracteres"
+	ErrPasswordComplexity  = "la contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial"
+	ErrPasswordsDoNotMatch = "las contraseñas no coinciden"
 
 	// Mensajes de validación de entrada
 	ErrInvalidInput   = "entrada inválida"

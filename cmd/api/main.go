@@ -17,7 +17,6 @@ import (
 )
 
 func init() {
-	// Inicializar el logger antes que nada
 	logLevel := os.Getenv("LOG_LEVEL")
 	if logLevel == "" {
 		logLevel = "INFO"
@@ -62,25 +61,20 @@ func main() {
 	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Inicializar storage
 	driver := storage.Postgres
 	logger.Info(ctx, dto.MsgInitializingDBConnection, logger.String("driver", string(driver)))
 	storage.New(driver)
 
-	// Cargar keys RSA
 	initKeys()
 
-	// Crear Unit of Work Factory
 	uowFactory, err := storage.UoWFactory(driver)
 	if err != nil {
 		logger.Fatal(ctx, dto.ErrUnitOfWorkFactory, logger.Error("error", err))
 	}
 
-	// Inicializar servicios
 	hasher := security.NewBcryptHasher(12)
 	userService := usecase.NewUserService(uowFactory, hasher)
 
-	// Ejecutar migraciones
 	logger.Info(ctx, dto.MsgRunningDBMigrations)
 	migrationService := usecase.NewMigrationService(uowFactory, userService)
 	if err := migrationService.Migrate(context.Background()); err != nil {
@@ -95,12 +89,10 @@ func main() {
 
 	authService := usecase.NewAuthService(uowFactory, hasher, jwtService)
 
-	// Crear router
 	r := router.New(userService, authService, jwtService)
 
 	logger.Info(ctx, dto.MsgServicesInitialized)
 
-	// Ejecutar servidor en goroutine
 	go func() {
 		logger.Info(ctx, dto.MsgStartingHTTPServer, logger.String("address", port))
 		if err := r.Start(port); err != nil {
@@ -109,11 +101,9 @@ func main() {
 		}
 	}()
 
-	// Esperar señal de terminación
 	<-signalCtx.Done()
 	logger.Info(ctx, dto.MsgShutdownSignalReceived)
 
-	// Graceful shutdown con timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

@@ -151,7 +151,7 @@ func (r *pgxUserRepository) UpdateByID(ctx context.Context, input ui.UpdateUserI
 	}
 
 	set := []string{}
-	args := []interface{}{}
+	args := []any{}
 	i := 1
 
 	for col, val := range fields {

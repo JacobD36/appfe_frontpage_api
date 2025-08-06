@@ -35,7 +35,7 @@ func New(userService usecaseInterfaces.UserService, authService usecaseInterface
 
 	e.Use(
 		echoMiddleware.Recover(),
-		middleware.Logger(), // Usar nuestro logger personalizado
+		middleware.Logger(),
 		echoMiddleware.Secure(),
 		echoMiddleware.Gzip(),
 		echoMiddleware.CORS(),
