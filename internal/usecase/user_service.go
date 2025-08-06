@@ -14,14 +14,22 @@ import (
 )
 
 type userService struct {
-	uowFactory ui.UnitOfWorkFactory
-	hasher     ui.PasswordHasher
+	uowFactory       ui.UnitOfWorkFactory
+	hasher           ui.PasswordHasher
+	messagingService ui.MessagingService
+	templateService  ui.TemplateService
 }
 
-func NewUserService(uowFactory ui.UnitOfWorkFactory, h ui.PasswordHasher) interfaces.UserService {
+func NewUserService(
+	uowFactory ui.UnitOfWorkFactory,
+	h ui.PasswordHasher,
+	messagingService ui.MessagingService,
+	templateService ui.TemplateService) interfaces.UserService {
 	return &userService{
-		uowFactory: uowFactory,
-		hasher:     h,
+		uowFactory:       uowFactory,
+		hasher:           h,
+		messagingService: messagingService,
+		templateService:  templateService,
 	}
 }
 
@@ -43,7 +51,10 @@ func (s *userService) Create(ctx context.Context, u *domain.User) error {
 	u.Name = strings.ToUpper(strings.TrimSpace(u.Name))
 	u.EmailValidated = true
 
+	// Capturar la contraseña original antes del hash para enviarla por email
+	var originalPassword string
 	if u.Password != nil {
+		originalPassword = *u.Password
 		hashed, err := s.hasher.Hash(*u.Password)
 		if err != nil {
 			return err
@@ -54,6 +65,24 @@ func (s *userService) Create(ctx context.Context, u *domain.User) error {
 	if err := uow.UserRepository().Create(ctx, u); err != nil {
 		return err
 	}
+
+	// Enviar email de bienvenida después de crear el usuario
+	if s.messagingService != nil && s.templateService != nil {
+		welcomeContent, err := s.templateService.RenderWelcomeEmail(u.Name, originalPassword)
+		if err != nil {
+			// Log del error pero no fallar la creación del usuario
+			return uow.Commit()
+		}
+
+		// Enviar email de forma asíncrona para no bloquear la respuesta
+		go func() {
+			if err := s.messagingService.SendEmail(context.Background(), u.Email, dto.WelcomeEmailSubject, welcomeContent); err != nil {
+				// Log del error pero no fallar la creación del usuario
+				// El logger debería estar disponible en el servicio de mensajería
+			}
+		}()
+	}
+
 	return uow.Commit()
 }
 

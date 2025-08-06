@@ -11,9 +11,15 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// LoggerConfig configura el middleware de logging
+// contextKey es un tipo personalizado para evitar colisiones en el contexto
+type contextKey string
+
+const (
+	// RequestIDKey es la clave para almacenar el request ID en el contexto
+	RequestIDKey contextKey = "request_id"
+)
+
 type LoggerConfig struct {
-	// SkipURIs es una lista de URIs que no deben ser loggeadas
 	SkipURIs []string
 
 	// LogErrorResponseBody indica si se debe loggear el cuerpo de las respuestas de error
@@ -53,7 +59,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 			// Agregar request ID al contexto para que esté disponible en los logs
 			ctx := c.Request().Context()
-			ctx = context.WithValue(ctx, "request_id", requestID)
+			ctx = context.WithValue(ctx, RequestIDKey, requestID)
 			c.SetRequest(c.Request().WithContext(ctx))
 
 			// Log del inicio de la request
@@ -87,7 +93,7 @@ func LoggerWithConfig(config LoggerConfig) echo.MiddlewareFunc {
 
 			// Log adicional para errores
 			if err != nil {
-				logger.LogError(ctx, dto.MsgRequestError,
+				logger.GetLogger().Error(ctx, dto.MsgRequestError,
 					logger.String("method", c.Request().Method),
 					logger.String("path", c.Request().URL.Path),
 					logger.Int("status_code", statusCode),
