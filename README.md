@@ -973,8 +973,6 @@ La aplicación incluye un **sistema completo de mensajería** con:
    ./scripts/test_brevo.sh
    ```
 
-**API Key ejemplo**: `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`
-
 ### 🏗️ Arquitectura del Sistema
 
 ```
