@@ -7,9 +7,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/messaging"
 	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/router"
 	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/security"
 	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/storage"
+	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/template"
+	"github.com/JacobD36/appfe_frontpage_api/internal/domain/interfaces"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/dto"
 	"github.com/JacobD36/appfe_frontpage_api/pkg/logger"
@@ -23,8 +26,16 @@ func init() {
 	}
 	logger.Init(logger.LogLevel(logLevel))
 
-	if err := godotenv.Load("../../.env"); err != nil {
-		logger.Warn(context.Background(), dto.ErrLoadingEnvFile, logger.Error("error", err))
+	// Intentar cargar .env desde diferentes ubicaciones
+	envPaths := []string{".env", "../.env", "../../.env"}
+	var loadErr error
+	for _, path := range envPaths {
+		if loadErr = godotenv.Load(path); loadErr == nil {
+			break
+		}
+	}
+	if loadErr != nil {
+		logger.Warn(context.Background(), dto.ErrLoadingEnvFile, logger.Error("error", loadErr))
 	}
 }
 
@@ -73,7 +84,26 @@ func main() {
 	}
 
 	hasher := security.NewBcryptHasher(12)
-	userService := usecase.NewUserService(uowFactory, hasher)
+
+	// Inicializar servicio de mensajería
+	var messagingService interfaces.MessagingService
+	if os.Getenv("BREVO_API_KEY") != "" {
+		emailService, err := messaging.NewBrevoEmailServiceFromEnv(logger.GetLogger())
+		if err != nil {
+			logger.Warn(ctx, dto.ErrMessagingServiceInitFailed, logger.Error("error", err))
+		} else {
+			messagingService = usecase.NewMessagingService(emailService, logger.GetLogger())
+			logger.Info(ctx, dto.MsgMessagingServiceInitSuccess)
+		}
+	} else {
+		logger.Info(ctx, dto.MsgMessagingServiceDisabled)
+	}
+
+	// Inicializar servicio de templates
+	templateService := template.NewHTMLTemplateService()
+	logger.Info(ctx, dto.MsgTemplateServiceInitialized)
+
+	userService := usecase.NewUserService(uowFactory, hasher, messagingService, templateService)
 
 	logger.Info(ctx, dto.MsgRunningDBMigrations)
 	migrationService := usecase.NewMigrationService(uowFactory, userService)
