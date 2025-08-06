@@ -3,13 +3,13 @@ package storage
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"sync"
 
 	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/repository"
 	"github.com/JacobD36/appfe_frontpage_api/internal/domain/interfaces"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/dto"
+	"github.com/JacobD36/appfe_frontpage_api/pkg/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -25,32 +25,41 @@ const (
 )
 
 func New(d Driver) {
+	ctx := context.Background()
 	switch d {
 	case Postgres:
+		logger.Info(ctx, dto.MsgInitializingPostgresConn)
 		newPostgresConn()
 	default:
-		log.Fatalf(dto.ErrUnsupportedDriver, d)
+		logger.Fatal(ctx, dto.ErrUnsupportedDriver, logger.String("driver", string(d)))
 	}
 }
 
 func newPostgresConn() {
 	once.Do(func() {
+		ctx := context.Background()
 		dsn := os.Getenv("POSTGRES_DATABASE_URL")
 		if dsn == "" {
-			log.Fatal(dto.ErrDatabaseURLNotSet)
+			logger.Fatal(ctx, dto.ErrDatabaseURLNotSet)
 		}
 
+		logger.Debug(ctx, dto.MsgParsingDBConfig)
 		config, err := pgxpool.ParseConfig(dsn)
 		if err != nil {
-			log.Fatalf(dto.ErrFailedParseConfig, err)
+			logger.Fatal(ctx, dto.ErrFailedParseConfig, logger.Error("error", err))
 		}
 
+		logger.Debug(ctx, dto.MsgCreatingDBPool)
 		pool, err = pgxpool.NewWithConfig(context.Background(), config)
 		if err != nil {
-			log.Fatalf(dto.ErrUnableCreatePool, err)
+			logger.Fatal(ctx, dto.ErrUnableCreatePool, logger.Error("error", err))
 		}
 
-		fmt.Println(dto.MsgConnectedToDatabase)
+		logger.Info(ctx, dto.MsgConnectedToDBSuccess,
+			logger.String("host", config.ConnConfig.Host),
+			logger.Int("port", int(config.ConnConfig.Port)),
+			logger.String("database", config.ConnConfig.Database),
+		)
 	})
 }
 

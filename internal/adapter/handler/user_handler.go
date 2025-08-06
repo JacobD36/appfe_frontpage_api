@@ -6,6 +6,7 @@ import (
 	"github.com/JacobD36/appfe_frontpage_api/internal/domain"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/dto"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/interfaces"
+	"github.com/JacobD36/appfe_frontpage_api/pkg/logger"
 	"github.com/JacobD36/appfe_frontpage_api/pkg/validator"
 	"github.com/labstack/echo/v4"
 )
@@ -21,24 +22,38 @@ func NewUserHandler(userService interfaces.UserService) *UserHandler {
 }
 
 func (h *UserHandler) Create(c echo.Context) error {
+	ctx := c.Request().Context()
 	var input dto.CreateUserInput
+
+	logger.Info(ctx, dto.MsgCreatingNewUser, logger.String("operation", "user_create"))
+
 	if err := c.Bind(&input); err != nil {
+		logger.Warn(ctx, dto.MsgInvalidInputForUser, logger.Error("error", err))
 		return Error(c, http.StatusBadRequest, dto.ErrInvalidInput)
 	}
 
 	if err := input.Validate(); err != nil {
 		msg := dto.TranslateValidationErrors(err)
+		logger.Warn(ctx, dto.MsgUserValidationFailed,
+			logger.String("email", input.Email),
+			logger.Error("validation_error", err),
+		)
 		return Error(c, http.StatusBadRequest, msg)
 	}
 
-	ctx := c.Request().Context()
-
 	existing, err := h.userService.FindByEmail(ctx, input.Email)
 	if err != nil && err.Error() != dto.ErrNoRowsFound {
-		return Error(c, http.StatusInternalServerError, dto.ErrUserNotFound)
+		logger.LogError(ctx, dto.MsgErrorCheckingExistingUser,
+			logger.String("email", input.Email),
+			logger.Error("error", err),
+		)
+		return Error(c, http.StatusInternalServerError, dto.ErrInternalServer)
 	}
 
 	if existing != nil {
+		logger.Warn(ctx, dto.MsgAttemptCreateExistingUser,
+			logger.String("email", input.Email),
+		)
 		return Error(c, http.StatusConflict, dto.ErrUserAlreadyExists)
 	}
 
@@ -50,8 +65,19 @@ func (h *UserHandler) Create(c echo.Context) error {
 	}
 
 	if err := h.userService.Create(ctx, u); err != nil {
+		logger.LogError(ctx, dto.MsgFailedToCreateUser,
+			logger.String("email", input.Email),
+			logger.String("role", input.Role),
+			logger.Error("error", err),
+		)
 		return Error(c, http.StatusInternalServerError, err.Error())
 	}
+
+	logger.Info(ctx, dto.MsgUserCreatedSuccessfully,
+		logger.String("user_id", u.ID),
+		logger.String("email", u.Email),
+		logger.String("role", u.Role),
+	)
 
 	return Success(c, http.StatusCreated, dto.ErrUserCreatedSuccess, echo.Map{
 		dto.UserIdLabel:    u.ID,

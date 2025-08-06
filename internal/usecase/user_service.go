@@ -2,23 +2,34 @@ package usecase
 
 import (
 	"context"
+	"errors"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/JacobD36/appfe_frontpage_api/internal/domain"
 	ui "github.com/JacobD36/appfe_frontpage_api/internal/domain/interfaces"
+	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/dto"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/interfaces"
 )
 
 type userService struct {
-	uowFactory ui.UnitOfWorkFactory
-	hasher     ui.PasswordHasher
+	uowFactory       ui.UnitOfWorkFactory
+	hasher           ui.PasswordHasher
+	messagingService ui.MessagingService
+	templateService  ui.TemplateService
 }
 
-func NewUserService(uowFactory ui.UnitOfWorkFactory, h ui.PasswordHasher) interfaces.UserService {
+func NewUserService(
+	uowFactory ui.UnitOfWorkFactory,
+	h ui.PasswordHasher,
+	messagingService ui.MessagingService,
+	templateService ui.TemplateService) interfaces.UserService {
 	return &userService{
-		uowFactory: uowFactory,
-		hasher:     h,
+		uowFactory:       uowFactory,
+		hasher:           h,
+		messagingService: messagingService,
+		templateService:  templateService,
 	}
 }
 
@@ -38,8 +49,12 @@ func (s *userService) Create(ctx context.Context, u *domain.User) error {
 	u.CreatedAt = time.Now()
 	u.Status = true
 	u.Name = strings.ToUpper(strings.TrimSpace(u.Name))
+	u.EmailValidated = true
 
+	// Capturar la contraseña original antes del hash para enviarla por email
+	var originalPassword string
 	if u.Password != nil {
+		originalPassword = *u.Password
 		hashed, err := s.hasher.Hash(*u.Password)
 		if err != nil {
 			return err
@@ -50,6 +65,24 @@ func (s *userService) Create(ctx context.Context, u *domain.User) error {
 	if err := uow.UserRepository().Create(ctx, u); err != nil {
 		return err
 	}
+
+	// Enviar email de bienvenida después de crear el usuario
+	if s.messagingService != nil && s.templateService != nil {
+		welcomeContent, err := s.templateService.RenderWelcomeEmail(u.Name, originalPassword)
+		if err != nil {
+			// Log del error pero no fallar la creación del usuario
+			return uow.Commit()
+		}
+
+		// Enviar email de forma asíncrona para no bloquear la respuesta
+		go func() {
+			if err := s.messagingService.SendEmail(context.Background(), u.Email, dto.WelcomeEmailSubject, welcomeContent); err != nil {
+				// Log del error pero no fallar la creación del usuario
+				// El logger debería estar disponible en el servicio de mensajería
+			}
+		}()
+	}
+
 	return uow.Commit()
 }
 
@@ -124,5 +157,51 @@ func (s *userService) Delete(ctx context.Context, id string) error {
 	if err := uow.UserRepository().Delete(ctx, id); err != nil {
 		return err
 	}
+	return uow.Commit()
+}
+
+func (s *userService) CreateInitialAdmin(ctx context.Context) error {
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	adminName := os.Getenv("ADMIN_NAME")
+
+	existingAdmin, err := s.FindByEmail(ctx, adminEmail)
+	if err != nil && err.Error() != dto.ErrNoRowsFound {
+		return err
+	}
+
+	if existingAdmin != nil {
+		return nil
+	}
+
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	if adminPassword == "" {
+		return errors.New("ADMIN_PASSWORD environment variable is required")
+	}
+
+	hashedPassword, err := s.hasher.Hash(adminPassword)
+	if err != nil {
+		return err
+	}
+
+	adminUser := &domain.User{
+		Name:           adminName,
+		Email:          adminEmail,
+		Password:       &hashedPassword,
+		Role:           domain.AdminRole,
+		Status:         true,
+		EmailValidated: true,
+		CreatedAt:      time.Now(),
+	}
+
+	uow, err := s.uowFactory.New(ctx)
+	if err != nil {
+		return err
+	}
+	defer uow.Rollback()
+
+	if err := uow.UserRepository().Create(ctx, adminUser); err != nil {
+		return err
+	}
+
 	return uow.Commit()
 }

@@ -35,7 +35,7 @@ func New(userService usecaseInterfaces.UserService, authService usecaseInterface
 
 	e.Use(
 		echoMiddleware.Recover(),
-		echoMiddleware.Logger(),
+		middleware.Logger(),
 		echoMiddleware.Secure(),
 		echoMiddleware.Gzip(),
 		echoMiddleware.CORS(),
@@ -65,9 +65,8 @@ func (r *Router) registerRoutes() {
 	userHandler := handler.NewUserHandler(r.handlers.User)
 	userGroup := v1.Group("/users")
 
-	userGroup.POST("", userHandler.Create)
-
 	adminUserGroup := userGroup.Group("", r.jwtMw.Authenticate(), r.jwtMw.RequireAdminRole())
+	adminUserGroup.POST("", userHandler.Create)
 	adminUserGroup.GET("", userHandler.GetAll)
 	adminUserGroup.GET("/:id", userHandler.GetByID)
 	adminUserGroup.PUT("/:id", userHandler.UpdateByID)

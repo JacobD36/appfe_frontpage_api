@@ -9,8 +9,9 @@ import (
 // Constantes para mensajes de validación y errores del sistema
 const (
 	// Mensajes de validación de contraseña
-	ErrPasswordMinLength  = "la contraseña debe tener al menos 8 caracteres"
-	ErrPasswordComplexity = "la contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial"
+	ErrPasswordMinLength   = "la contraseña debe tener al menos 8 caracteres"
+	ErrPasswordComplexity  = "la contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial"
+	ErrPasswordsDoNotMatch = "las contraseñas no coinciden"
 
 	// Mensajes de validación de entrada
 	ErrInvalidInput   = "entrada inválida"
@@ -91,6 +92,135 @@ const (
 	ErrUnauthorizedAccess      = "acceso no autorizado"
 	ErrTokenSignInSuccess      = "autenticación con token exitosa"
 	ErrUserNotFoundForToken    = "usuario no encontrado para el token proporcionado"
+
+	// Mensajes de logging para el sistema
+	MsgStartingAPIServer        = "Starting APPFE Lima API Server"
+	MsgInitializingDBConnection = "Initializing database connection"
+	MsgLoadingRSAKeys           = "Loading RSA keys"
+	MsgRSAKeysLoadedSuccess     = "RSA keys loaded successfully"
+	MsgRunningDBMigrations      = "Running database migrations"
+	MsgDBMigrationsCompleted    = "Database migrations completed successfully"
+	MsgServicesInitialized      = "Services initialized successfully"
+	MsgStartingHTTPServer       = "Starting HTTP server"
+	MsgShutdownSignalReceived   = "Shutdown signal received, starting graceful shutdown"
+
+	// Mensajes de logging para handlers
+	MsgCreatingNewUser           = "Creating new user"
+	MsgUserCreatedSuccessfully   = "User created successfully"
+	MsgInvalidInputForUser       = "Invalid input for user creation"
+	MsgUserValidationFailed      = "User creation validation failed"
+	MsgErrorCheckingExistingUser = "Error checking existing user"
+	MsgAttemptCreateExistingUser = "Attempt to create user with existing email"
+	MsgFailedToCreateUser        = "Failed to create user"
+
+	// Mensajes de logging para respuestas
+	MsgSuccessfulResponse      = "Successful response"
+	MsgSuccessfulLoginResponse = "Successful login response"
+	MsgErrorResponse           = "Error response"
+
+	// Mensajes de logging para base de datos
+	MsgInitializingPostgresConn = "Initializing PostgreSQL connection"
+	MsgParsingDBConfig          = "Parsing database configuration"
+	MsgCreatingDBPool           = "Creating database connection pool"
+	MsgConnectedToDBSuccess     = "Connected to PostgreSQL database successfully"
+
+	// Mensajes de logging para middleware y requests
+	MsgRequestStarted        = "Request Started"
+	MsgRequestError          = "Request Error"
+	MsgHTTPRequest           = "HTTP Request"
+	MsgDatabaseOpSuccess     = "Database Operation Success"
+	MsgDatabaseOpFailed      = "Database Operation Failed"
+	MsgAuthenticationSuccess = "Authentication Success"
+	MsgAuthenticationFailed  = "Authentication Failed"
+	MsgBusinessOperation     = "Business Operation"
+
+	// Mensajes de error para mensajería
+	ErrMessagingRecipientRequired  = "el destinatario es obligatorio"
+	ErrMessagingSubjectRequired    = "el asunto es obligatorio"
+	ErrMessagingContentRequired    = "el contenido es obligatorio"
+	ErrMessagingInvalidEmailFormat = "formato de correo electrónico inválido: %w"
+	ErrMessagingFailedToSend       = "error al enviar correo: %w"
+
+	// Mensajes de logging para mensajería
+	MsgMessagingSendingEmail      = "Sending email"
+	MsgMessagingEmailSentSuccess  = "Email sent successfully"
+	MsgMessagingFailedToSendEmail = "Failed to send email"
+
+	// Mensajes para inicialización de servicios en main.go
+	ErrMessagingServiceInitFailed  = "Failed to initialize email service"
+	MsgMessagingServiceInitSuccess = "Messaging service initialized successfully"
+	MsgMessagingServiceDisabled    = "BREVO_API_KEY not set, messaging service disabled"
+
+	// Constantes para BrevoEmailService
+	ErrBrevoConfigRequired            = "config is required"
+	ErrBrevoAPIKeyRequired            = "API key is required"
+	ErrBrevoFromEmailRequired         = "from email is required"
+	ErrBrevoInvalidFromEmailFormat    = "invalid from email format: %w"
+	ErrBrevoFailedValidateConfig      = "failed to validate Brevo configuration: %w"
+	ErrBrevoInvalidAPIKeyOrConnection = "invalid API key or connection error: %w"
+	ErrBrevoMessageRequired           = "message is required"
+	ErrBrevoInvalidEmailMessage       = "invalid email message: %w"
+	ErrBrevoFailedSendEmail           = "failed to send email: %w"
+	ErrBrevoAtLeastOneMessageRequired = "at least one message is required"
+	ErrBrevoTooManyMessages           = "too many messages in bulk request (max 50)"
+	ErrBrevoFailedSendMultipleMsg     = "failed to send %d messages: %s"
+	ErrBrevoValidTemplateIDRequired   = "valid template ID is required"
+	ErrBrevoAtLeastOneRecipient       = "at least one recipient is required"
+	ErrBrevoInvalidEmailAddress       = "invalid email address %s: %w"
+	ErrBrevoFailedSendTemplate        = "failed to send template email: %w"
+	ErrBrevoEmailRequired             = "email is required"
+	ErrBrevoInvalidEmailFormat        = "invalid email format: %w"
+	ErrBrevoMessageIDRequired         = "message ID is required"
+	ErrBrevoSubjectRequired           = "subject is required"
+	ErrBrevoContentRequired           = "either HTML content or text content is required"
+	ErrBrevoEnvAPIKeyRequired         = "BREVO_API_KEY environment variable is required"
+
+	// Constantes para logging de BrevoEmailService
+	MsgBrevoServiceInitialized      = "Brevo email service initialized successfully"
+	MsgBrevoFailedValidateConfig    = "Failed to validate Brevo API configuration"
+	MsgBrevoInvalidEmailMessage     = "Invalid email message"
+	MsgBrevoFailedSendEmail         = "Failed to send email via Brevo"
+	MsgBrevoEmailSentSuccess        = "Email sent successfully via Brevo"
+	MsgBrevoBulkEmailCompleted      = "Bulk email sending completed"
+	MsgBrevoFailedSendTemplate      = "Failed to send template email via Brevo"
+	MsgBrevoTemplateSentSuccess     = "Template email sent successfully via Brevo"
+	MsgBrevoGetStatusNotImplemented = "GetEmailStatus is not fully implemented for Brevo"
+
+	// Constantes para valores por defecto y configuración
+	BrevoAPIKeyHeaderName   = "api-key"
+	BrevoDefaultFromEmail   = "noreply@appfe.com"
+	BrevoDefaultFromName    = "APPFE"
+	BrevoDefaultEmailStatus = "sent"
+	BrevoWebhookNote        = "Brevo requires webhooks for real-time status tracking"
+	BrevoBulkMessageFormat  = "message %d: %s"
+
+	// Constantes para variables de entorno
+	EnvBrevoAPIKey    = "BREVO_API_KEY"
+	EnvBrevoFromEmail = "BREVO_FROM_EMAIL"
+	EnvBrevoFromName  = "BREVO_FROM_NAME"
+
+	// Constantes para campos de logging
+	LogFieldFromEmail  = "from_email"
+	LogFieldFromName   = "from_name"
+	LogFieldError      = "error"
+	LogFieldSubject    = "subject"
+	LogFieldTo         = "to"
+	LogFieldMessageID  = "message_id"
+	LogFieldTemplateID = "template_id"
+	LogFieldTotalMsgs  = "total_messages"
+	LogFieldSuccessful = "successful"
+	LogFieldFailed     = "failed"
+	LogFieldNote       = "note"
+
+	// Mensajes de Template Service
+	MsgTemplateServiceInitialized = "template service initialized successfully"
+	ErrTemplateRenderFailed       = "error rendering template: %w"
+	MsgWelcomeEmailTemplateUsed   = "welcome email template rendered"
+	WelcomeEmailSubject           = "¡Bienvenido a APPFE Lima!"
+	PasswordResetEmailSubject     = "Restablecer Contraseña - APPFE Lima"
+	EmailValidationSubject        = "Verificar Email - APPFE Lima"
+	ErrTemplateNotFound           = "template not found: %s"
+	ErrTemplateParamsRequired     = "template parameters are required"
 )
 
 func TranslateValidationErrors(err error) string {

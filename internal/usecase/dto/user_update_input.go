@@ -1,5 +1,7 @@
 package dto
 
+import "strings"
+
 type UpdateUserInput struct {
 	ID             string
 	Name           *string
@@ -18,7 +20,7 @@ func (u UpdateUserInput) FieldsToUpdate() map[string]any {
 	fields := make(map[string]any)
 
 	if u.Name != nil {
-		fields["name"] = *u.Name
+		fields["name"] = strings.ToUpper(*u.Name)
 	}
 	if u.Password != nil {
 		fields["password"] = *u.Password
