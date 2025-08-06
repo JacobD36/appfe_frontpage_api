@@ -96,28 +96,526 @@ Este proyecto utiliza **Clean Architecture** con las siguientes capas:
 
 ### Autenticación
 
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/auth/login` | Iniciar sesión | No |
-| POST | `/api/v1/auth/sign-in-with-token` | Iniciar sesión con token | No |
+#### POST `/api/v1/auth/login`
+**Descripción**: Iniciar sesión con email y contraseña  
+**Autenticación**: No requerida
+
+**Request Body**:
+```json
+{
+  "email": "usuario@email.com",
+  "password": "contraseña123"
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "code": 200,
+  "message": "Login exitoso",
+  "status": "OK",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "JUAN PÉREZ",
+    "email": "usuario@email.com",
+    "role": "USER_ROLE",
+    "status": true,
+    "emailValidated": true,
+    "created_at": "2024-08-04T10:30:00Z",
+    "updated_at": null
+  },
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Errores Comunes**:
+- `400 Bad Request`: Credenciales inválidas, email no validado, cuenta deshabilitada
+- `500 Internal Server Error`: Error interno del servidor
+
+---
+
+#### POST `/api/v1/auth/sign-in-with-token`
+**Descripción**: Iniciar sesión utilizando un token JWT válido  
+**Autenticación**: No requerida
+
+**Request Body**:
+```json
+{
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response (200 OK)**:
+```json
+{
+  "code": 200,
+  "message": "Inicio de sesión con token exitoso",
+  "status": "OK",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "JUAN PÉREZ",
+    "email": "usuario@email.com",
+    "role": "USER_ROLE",
+    "status": true,
+    "emailValidated": true,
+    "created_at": "2024-08-04T10:30:00Z"
+  },
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9..." // Nuevo token
+}
+```
+
+**Errores Comunes**:
+- `401 Unauthorized`: Token inválido o expirado
+- `400 Bad Request`: Usuario no encontrado, email no validado, cuenta deshabilitada
+
+---
 
 ### Gestión de Usuarios
 
-| Método | Endpoint | Descripción | Auth | Rol Requerido |
-|--------|----------|-------------|------|---------------|
-| POST | `/api/v1/users` | Crear usuario | No | - |
-| GET | `/api/v1/users` | Listar usuarios | JWT | ADMIN_ROLE |
-| GET | `/api/v1/users/:id` | Obtener usuario por ID | JWT | ADMIN_ROLE |
-| PUT | `/api/v1/users/:id` | Actualizar usuario | JWT | ADMIN_ROLE |
-| DELETE | `/api/v1/users/:id` | Eliminar usuario | JWT | ADMIN_ROLE |
+#### POST `/api/v1/users`
+**Descripción**: Crear un nuevo usuario  
+**Autenticación**: JWT requerida  
+**Rol Requerido**: `ADMIN_ROLE`
 
-### Parámetros de Consulta para Listado de Usuarios
+**Headers**:
+```
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
 
-- `page`: Número de página (default: 1)
-- `limit`: Cantidad de elementos por página (default: 100)
-- `search`: Búsqueda por nombre o email
+**Request Body**:
+```json
+{
+  "name": "Juan Pérez",
+  "email": "juan.perez@email.com",
+  "password": "contraseña123",
+  "role": "USER_ROLE" // Opcional, default: USER_ROLE
+}
+```
 
-**Ejemplo**: `GET /api/v1/users?page=1&limit=10&search=juan`
+**Response (201 Created)**:
+```json
+{
+  "code": 201,
+  "message": "Usuario creado exitosamente",
+  "status": "Created",
+  "data": {
+    "user_id": "550e8400-e29b-41d4-a716-446655440000",
+    "user_email": "juan.perez@email.com"
+  }
+}
+```
+
+**Validaciones**:
+- `name`: Requerido, mínimo 2 caracteres
+- `email`: Formato válido, único en el sistema
+- `password`: Requerido, mínimo 6 caracteres
+- `role`: Opcional, valores válidos: `USER_ROLE`, `ADMIN_ROLE`
+
+**Errores Comunes**:
+- `400 Bad Request`: Datos de entrada inválidos
+- `401 Unauthorized`: Token faltante o inválido
+- `403 Forbidden`: Rol insuficiente (requiere ADMIN_ROLE)
+- `409 Conflict`: Email ya existe en el sistema
+
+---
+
+#### GET `/api/v1/users`
+**Descripción**: Listar todos los usuarios con paginación y búsqueda  
+**Autenticación**: JWT requerida  
+**Rol Requerido**: `ADMIN_ROLE`
+
+**Headers**:
+```
+Authorization: Bearer {jwt_token}
+```
+
+**Query Parameters**:
+- `page` (opcional): Número de página, default: 1
+- `limit` (opcional): Elementos por página, default: 100, máximo: 1000
+- `search` (opcional): Búsqueda por nombre o email
+
+**Ejemplos de Uso**:
+```bash
+# Listar todos los usuarios
+GET /api/v1/users
+
+# Paginación
+GET /api/v1/users?page=2&limit=10
+
+# Búsqueda
+GET /api/v1/users?search=juan
+
+# Combinado
+GET /api/v1/users?page=1&limit=5&search=admin
+```
+
+**Response (200 OK)**:
+```json
+{
+  "code": 200,
+  "message": "Usuarios obtenidos exitosamente",
+  "status": "OK",
+  "data": {
+    "items": [
+      {
+        "id": "550e8400-e29b-41d4-a716-446655440000",
+        "name": "JUAN PÉREZ",
+        "email": "juan.perez@email.com",
+        "role": "USER_ROLE",
+        "status": true,
+        "emailValidated": true,
+        "created_at": "2024-08-04T10:30:00Z",
+        "updated_at": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 25,
+      "totalPages": 3,
+      "search": "juan"
+    }
+  }
+}
+```
+
+**Errores Comunes**:
+- `401 Unauthorized`: Token faltante o inválido
+- `403 Forbidden`: Rol insuficiente (requiere ADMIN_ROLE)
+- `400 Bad Request`: Parámetros de paginación inválidos
+
+---
+
+#### GET `/api/v1/users/:id`
+**Descripción**: Obtener información detallada de un usuario específico  
+**Autenticación**: JWT requerida  
+**Rol Requerido**: `ADMIN_ROLE`
+
+**Headers**:
+```
+Authorization: Bearer {jwt_token}
+```
+
+**Path Parameters**:
+- `id`: UUID del usuario
+
+**Ejemplo**:
+```bash
+GET /api/v1/users/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response (200 OK)**:
+```json
+{
+  "code": 200,
+  "message": "Usuario obtenido exitosamente",
+  "status": "OK",
+  "data": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "name": "JUAN PÉREZ",
+    "email": "juan.perez@email.com",
+    "role": "USER_ROLE",
+    "status": true,
+    "emailValidated": true,
+    "created_at": "2024-08-04T10:30:00Z",
+    "updated_at": "2024-08-05T14:20:00Z"
+  }
+}
+```
+
+**Errores Comunes**:
+- `400 Bad Request`: ID de usuario inválido
+- `404 Not Found`: Usuario no encontrado
+- `401 Unauthorized`: Token faltante o inválido
+- `403 Forbidden`: Rol insuficiente
+
+---
+
+#### PUT `/api/v1/users/:id`
+**Descripción**: Actualizar información de un usuario específico  
+**Autenticación**: JWT requerida  
+**Rol Requerido**: `ADMIN_ROLE`
+
+**Headers**:
+```
+Authorization: Bearer {jwt_token}
+Content-Type: application/json
+```
+
+**Path Parameters**:
+- `id`: UUID del usuario
+
+**Request Body** (todos los campos son opcionales):
+```json
+{
+  "name": "Juan Carlos Pérez",
+  "email": "juan.carlos@email.com",
+  "password": "nueva_contraseña123",
+  "img": "https://example.com/avatar.jpg",
+  "role": "ADMIN_ROLE",
+  "status": true,
+  "emailValidated": true
+}
+```
+
+**Ejemplo**:
+```bash
+PUT /api/v1/users/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response (200 OK)**:
+```json
+{
+  "code": 200,
+  "message": "Usuario actualizado exitosamente",
+  "status": "OK",
+  "data": {
+    "user_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+**Validaciones**:
+- `name`: Si se proporciona, mínimo 2 caracteres
+- `email`: Si se proporciona, formato válido y único
+- `password`: Si se proporciona, mínimo 6 caracteres
+- `role`: Si se proporciona, debe ser `USER_ROLE` o `ADMIN_ROLE`
+- `status`: Boolean
+- `emailValidated`: Boolean
+
+**Errores Comunes**:
+- `400 Bad Request`: ID inválido o datos de entrada incorrectos
+- `404 Not Found`: Usuario no encontrado
+- `401 Unauthorized`: Token faltante o inválido
+- `403 Forbidden`: Rol insuficiente
+- `409 Conflict`: Email ya existe (si se intenta cambiar a uno existente)
+
+---
+
+#### DELETE `/api/v1/users/:id`
+**Descripción**: Eliminar (soft delete) un usuario específico  
+**Autenticación**: JWT requerida  
+**Rol Requerido**: `ADMIN_ROLE`
+
+**Headers**:
+```
+Authorization: Bearer {jwt_token}
+```
+
+**Path Parameters**:
+- `id`: UUID del usuario
+
+**Ejemplo**:
+```bash
+DELETE /api/v1/users/550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response (200 OK)**:
+```json
+{
+  "code": 200,
+  "message": "Usuario eliminado exitosamente",
+  "status": "OK",
+  "data": {
+    "user_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+**Nota Importante**: 
+Esta operación realiza un "soft delete", marcando el usuario como inactivo (`status: false`) y actualizando el campo `updated_at`. El usuario no se elimina físicamente de la base de datos.
+
+**Errores Comunes**:
+- `400 Bad Request`: ID de usuario inválido
+- `404 Not Found`: Usuario no encontrado
+- `401 Unauthorized`: Token faltante o inválido
+- `403 Forbidden`: Rol insuficiente
+
+---
+
+## 🔧 Ejemplos Prácticos con cURL
+
+### Flujo Completo de Administración
+
+#### 1. Iniciar Sesión como Administrador
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "administracion@appfe.com",
+    "password": "tu_contraseña_admin"
+  }'
+```
+
+**Respuesta**: Guardar el `token` de la respuesta para usar en las siguientes peticiones.
+
+#### 2. Crear un Nuevo Usuario (requiere token de admin)
+```bash
+curl -X POST http://localhost:3000/api/v1/users \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "María González",
+    "email": "maria.gonzalez@email.com",
+    "password": "contraseña123",
+    "role": "USER_ROLE"
+  }'
+```
+
+#### 3. Listar Usuarios (requiere token de admin)
+```bash
+curl -X GET "http://localhost:3000/api/v1/users?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
+```
+
+#### 4. Buscar Usuarios
+```bash
+curl -X GET "http://localhost:3000/api/v1/users?search=maria&limit=5" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
+```
+
+#### 5. Obtener Usuario Específico
+```bash
+curl -X GET http://localhost:3000/api/v1/users/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
+```
+
+#### 6. Actualizar Usuario
+```bash
+curl -X PUT http://localhost:3000/api/v1/users/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "María Elena González",
+    "role": "ADMIN_ROLE",
+    "status": true
+  }'
+```
+
+#### 7. Eliminar Usuario (Soft Delete)
+```bash
+curl -X DELETE http://localhost:3000/api/v1/users/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
+```
+
+---
+
+## ⚠️ Códigos de Estado HTTP
+
+### Códigos de Éxito
+- **200 OK**: Operación exitosa
+- **201 Created**: Recurso creado exitosamente
+
+### Códigos de Error del Cliente (4xx)
+- **400 Bad Request**: Datos de entrada inválidos o parámetros incorrectos
+- **401 Unauthorized**: Autenticación requerida o token inválido/expirado
+- **403 Forbidden**: Permisos insuficientes para acceder al recurso
+- **404 Not Found**: Recurso no encontrado
+- **409 Conflict**: Conflicto con el estado actual del recurso (ej. email duplicado)
+
+### Códigos de Error del Servidor (5xx)
+- **500 Internal Server Error**: Error interno del servidor
+
+### Formato de Respuestas de Error
+
+**Estructura Consistente**:
+```json
+{
+  "code": 400,
+  "message": "Descripción detallada del error",
+  "status": "Bad Request",
+  "data": null
+}
+```
+
+**Ejemplos de Errores Comunes**:
+
+```json
+// 401 - Token faltante
+{
+  "code": 401,
+  "message": "Token de autorización faltante",
+  "status": "Unauthorized",
+  "data": null
+}
+
+// 403 - Permisos insuficientes
+{
+  "code": 403,
+  "message": "Permisos insuficientes para acceder a este recurso",
+  "status": "Forbidden",
+  "data": null
+}
+
+// 409 - Email duplicado
+{
+  "code": 409,
+  "message": "El usuario ya existe con este email",
+  "status": "Conflict",
+  "data": null
+}
+
+// 400 - Validación fallida
+{
+  "code": 400,
+  "message": "name: mínimo 2 caracteres requeridos; email: formato de email inválido",
+  "status": "Bad Request",
+  "data": null
+}
+```
+
+---
+
+## 🔍 Casos de Uso Administrativos
+
+### Escenario 1: Gestión de Nuevos Usuarios
+1. **Admin se autentica** → `POST /api/v1/auth/login`
+2. **Crea nuevo usuario** → `POST /api/v1/users`
+3. **Verifica creación** → `GET /api/v1/users/{id}`
+4. **Actualiza si es necesario** → `PUT /api/v1/users/{id}`
+
+### Escenario 2: Búsqueda y Moderación
+1. **Admin busca usuarios** → `GET /api/v1/users?search=termino`
+2. **Revisa perfil específico** → `GET /api/v1/users/{id}`
+3. **Modifica estado si es necesario** → `PUT /api/v1/users/{id}` (cambiar status)
+4. **Elimina si es necesario** → `DELETE /api/v1/users/{id}`
+
+### Escenario 3: Auditoría y Reportes
+1. **Lista todos los usuarios** → `GET /api/v1/users?limit=1000`
+2. **Filtra por criterios específicos** usando paginación y búsqueda
+3. **Exporta datos** para análisis externo
+
+---
+
+## 🛡️ Consideraciones de Seguridad para Administradores
+
+### Mejores Prácticas
+
+1. **Tokens JWT**:
+   - Los tokens tienen expiración automática
+   - Usar HTTPS en producción
+   - No compartir tokens entre usuarios
+
+2. **Contraseñas**:
+   - Las contraseñas se hashean automáticamente con BCrypt (cost 12)
+   - Nunca se retornan en las respuestas de la API
+   - Requerir contraseñas fuertes (mínimo 6 caracteres)
+
+3. **Roles y Permisos**:
+   - Solo usuarios con `ADMIN_ROLE` pueden administrar otros usuarios
+   - El usuario inicial se crea automáticamente al iniciar la aplicación
+   - Los roles se validan en cada petición
+
+4. **Eliminación de Datos**:
+   - Se implementa "soft delete" para preservar datos
+   - Los usuarios eliminados se marcan como `status: false`
+   - No se elimina información de manera permanente
+
+5. **Validación de Entrada**:
+   - Todos los endpoints validan datos de entrada
+   - Se retornan mensajes de error descriptivos
+   - Se previenen inyecciones SQL mediante uso de prepared statements
 
 ## 🔐 Sistema de Roles
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,74 +12,114 @@ import (
 	"github.com/JacobD36/appfe_frontpage_api/internal/adapter/storage"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase"
 	"github.com/JacobD36/appfe_frontpage_api/internal/usecase/dto"
+	"github.com/JacobD36/appfe_frontpage_api/pkg/logger"
 	"github.com/joho/godotenv"
 )
 
 func init() {
+	// Inicializar el logger antes que nada
+	logLevel := os.Getenv("LOG_LEVEL")
+	if logLevel == "" {
+		logLevel = "INFO"
+	}
+	logger.Init(logger.LogLevel(logLevel))
+
 	if err := godotenv.Load("../../.env"); err != nil {
-		log.Println(dto.ErrLoadingEnvFile)
+		logger.Warn(context.Background(), dto.ErrLoadingEnvFile, logger.Error("error", err))
 	}
 }
 
 func initKeys() {
+	ctx := context.Background()
 	privateKeyPath := os.Getenv("RSA_PRIVATE_KEY_PATH")
 	publicKeyPath := os.Getenv("RSA_PUBLIC_KEY_PATH")
 	if privateKeyPath == "" || publicKeyPath == "" {
-		log.Fatal(dto.ErrRSAKeysNotSet)
+		logger.Fatal(ctx, dto.ErrRSAKeysNotSet)
 	}
+
+	logger.Info(ctx, dto.MsgLoadingRSAKeys,
+		logger.String("private_key_path", privateKeyPath),
+		logger.String("public_key_path", publicKeyPath),
+	)
+
 	err := security.LoadFiles(privateKeyPath, publicKeyPath)
 	if err != nil {
-		log.Fatalf(dto.ErrFailedLoadRSAKeys, err)
+		logger.Fatal(ctx, dto.ErrFailedLoadRSAKeys, logger.Error("error", err))
 	}
+
+	logger.Info(ctx, dto.MsgRSAKeysLoadedSuccess)
 }
 
 func main() {
+	ctx := context.Background()
 	port := os.Getenv("PORT")
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-
-	driver := storage.Postgres
-	storage.New(driver)
-	initKeys()
-
-	uowFactory, err := storage.UoWFactory(driver)
-	if err != nil {
-		log.Fatal(dto.ErrUnitOfWorkFactory, ": ", err)
+	if port == "" {
+		port = ":8080"
 	}
 
+	logger.Info(ctx, dto.MsgStartingAPIServer, logger.String("port", port))
+
+	signalCtx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Inicializar storage
+	driver := storage.Postgres
+	logger.Info(ctx, dto.MsgInitializingDBConnection, logger.String("driver", string(driver)))
+	storage.New(driver)
+
+	// Cargar keys RSA
+	initKeys()
+
+	// Crear Unit of Work Factory
+	uowFactory, err := storage.UoWFactory(driver)
+	if err != nil {
+		logger.Fatal(ctx, dto.ErrUnitOfWorkFactory, logger.Error("error", err))
+	}
+
+	// Inicializar servicios
 	hasher := security.NewBcryptHasher(12)
 	userService := usecase.NewUserService(uowFactory, hasher)
 
+	// Ejecutar migraciones
+	logger.Info(ctx, dto.MsgRunningDBMigrations)
 	migrationService := usecase.NewMigrationService(uowFactory, userService)
 	if err := migrationService.Migrate(context.Background()); err != nil {
-		log.Fatalf(dto.ErrMigrationFailed, err)
+		logger.Fatal(ctx, dto.ErrMigrationFailed, logger.Error("error", err))
 	}
+	logger.Info(ctx, dto.MsgDBMigrationsCompleted)
 
 	jwtService, err := security.NewJWTService()
 	if err != nil {
-		log.Fatal(dto.ErrTokenGenerationFailed, ": ", err)
+		logger.Fatal(ctx, dto.ErrTokenGenerationFailed, logger.Error("error", err))
 	}
 
 	authService := usecase.NewAuthService(uowFactory, hasher, jwtService)
 
+	// Crear router
 	r := router.New(userService, authService, jwtService)
 
+	logger.Info(ctx, dto.MsgServicesInitialized)
+
+	// Ejecutar servidor en goroutine
 	go func() {
+		logger.Info(ctx, dto.MsgStartingHTTPServer, logger.String("address", port))
 		if err := r.Start(port); err != nil {
-			log.Printf(dto.ErrServerError, err)
+			logger.LogError(ctx, dto.ErrServerError, logger.Error("error", err))
 			stop()
 		}
 	}()
 
-	<-ctx.Done()
-	log.Println(dto.MsgShuttingDownServer)
+	// Esperar señal de terminación
+	<-signalCtx.Done()
+	logger.Info(ctx, dto.MsgShutdownSignalReceived)
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 0*time.Second)
+	// Graceful shutdown con timeout
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := r.GetEchoInstance().Shutdown(shutdownCtx); err != nil {
-		log.Fatalf(dto.ErrForcedShutdown, err)
+		logger.Fatal(ctx, dto.ErrForcedShutdown, logger.Error("error", err))
 	}
 
-	log.Println(dto.MsgServerStoppedGracefully)
+	logger.Info(ctx, dto.MsgServerStoppedGracefully)
 }

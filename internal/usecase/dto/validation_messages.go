@@ -91,6 +91,47 @@ const (
 	ErrUnauthorizedAccess      = "acceso no autorizado"
 	ErrTokenSignInSuccess      = "autenticación con token exitosa"
 	ErrUserNotFoundForToken    = "usuario no encontrado para el token proporcionado"
+
+	// Mensajes de logging para el sistema
+	MsgStartingAPIServer        = "Starting APPFE Lima API Server"
+	MsgInitializingDBConnection = "Initializing database connection"
+	MsgLoadingRSAKeys           = "Loading RSA keys"
+	MsgRSAKeysLoadedSuccess     = "RSA keys loaded successfully"
+	MsgRunningDBMigrations      = "Running database migrations"
+	MsgDBMigrationsCompleted    = "Database migrations completed successfully"
+	MsgServicesInitialized      = "Services initialized successfully"
+	MsgStartingHTTPServer       = "Starting HTTP server"
+	MsgShutdownSignalReceived   = "Shutdown signal received, starting graceful shutdown"
+
+	// Mensajes de logging para handlers
+	MsgCreatingNewUser           = "Creating new user"
+	MsgUserCreatedSuccessfully   = "User created successfully"
+	MsgInvalidInputForUser       = "Invalid input for user creation"
+	MsgUserValidationFailed      = "User creation validation failed"
+	MsgErrorCheckingExistingUser = "Error checking existing user"
+	MsgAttemptCreateExistingUser = "Attempt to create user with existing email"
+	MsgFailedToCreateUser        = "Failed to create user"
+
+	// Mensajes de logging para respuestas
+	MsgSuccessfulResponse      = "Successful response"
+	MsgSuccessfulLoginResponse = "Successful login response"
+	MsgErrorResponse           = "Error response"
+
+	// Mensajes de logging para base de datos
+	MsgInitializingPostgresConn = "Initializing PostgreSQL connection"
+	MsgParsingDBConfig          = "Parsing database configuration"
+	MsgCreatingDBPool           = "Creating database connection pool"
+	MsgConnectedToDBSuccess     = "Connected to PostgreSQL database successfully"
+
+	// Mensajes de logging para middleware y requests
+	MsgRequestStarted        = "Request Started"
+	MsgRequestError          = "Request Error"
+	MsgHTTPRequest           = "HTTP Request"
+	MsgDatabaseOpSuccess     = "Database Operation Success"
+	MsgDatabaseOpFailed      = "Database Operation Failed"
+	MsgAuthenticationSuccess = "Authentication Success"
+	MsgAuthenticationFailed  = "Authentication Failed"
+	MsgBusinessOperation     = "Business Operation"
 )
 
 func TranslateValidationErrors(err error) string {
